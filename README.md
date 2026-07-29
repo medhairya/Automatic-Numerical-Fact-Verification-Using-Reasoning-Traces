@@ -4,11 +4,6 @@
 
 # Learning Robust Numerical Fact Verification through Large Language Model Reasoning Traces
 
-**M.Tech Major Project • Dhirubhai Ambani University**
-
-</p>
-
----
 
 ## Highlights
 
@@ -135,25 +130,6 @@ Automatic-Numerical-Fact-Verification/
 
 ---
 
-# Installation
-
-```bash
-git clone https://github.com/medhairya/Automatic-Numerical-Fact-Verification.git
-cd Automatic-Numerical-Fact-Verification
-pip install -r requirements.txt
-```
-
----
-
-# Running Experiments
-
-```bash
-python embedding_generation.py
-python train.py
-python evaluate.py
-```
-
----
 
 # Key Findings
 
