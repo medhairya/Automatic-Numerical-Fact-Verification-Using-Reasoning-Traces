@@ -111,6 +111,10 @@ we investigate:
 
 # Pipeline Architecture
 
+View Better Version of Pipeline: https://mermaid.ai/d/fc991fff-3373-43a7-990e-aa8f9b72ad2e
+<img width="663" height="53" alt="image" src="https://github.com/user-attachments/assets/6fb0b773-a41f-4ed3-9ffb-187ee47ec213" />
+
+
 ```text
                               Numerical Claim
                                     │
