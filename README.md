@@ -1,115 +1,368 @@
 # Automatic Numerical Fact Verification using Reasoning Traces
 
 <p align="center">
+  <b>Learning Robust Numerical Fact Verification through Large Language Model Reasoning Traces</b>
+</p>
 
-# Learning Robust Numerical Fact Verification through Large Language Model Reasoning Traces
-
-
-## Highlights
-
-- **134,554** dense semantic embeddings generated
-- **6,469** semantically matched claims across CLEF CheckThat! 2025 & 2026
-- **15–20** reasoning traces generated per claim
-- **1024-dimensional** embedding representation
-- Supervised learning with **MLP** and **XGBoost**
-- Extensive **ablation studies**
-- **Embedding geometry** and **clustering analysis**
-- Future direction: **Learning-to-Rank Reasoning Traces**
+<p align="center">
+  <i>Can the semantic structure of LLM reasoning traces provide a useful signal for determining whether numerical claims are true?</i>
+</p>
 
 ---
 
-# Overview
+## Abstract
 
-Automatic verification of **numerical claims** remains considerably more difficult than ordinary textual fact-checking because correctness depends on exact quantities, temporal grounding, comparisons, and arithmetic reasoning rather than semantic similarity alone.
+Numerical fact verification presents a distinctive challenge for large language models (LLMs). Unlike conventional textual fact-checking, verifying a numerical claim often requires **exact quantitative reasoning, arithmetic operations, comparisons, temporal grounding, and interpretation of evidence**. A response can therefore be semantically plausible while still being numerically incorrect.
 
-This project studies whether **LLM-generated reasoning traces** can be used as a rich semantic representation for predicting the veracity of numerical claims.
+This research project investigates whether **LLM-generated reasoning traces can serve as informative representations for numerical fact verification**. Rather than treating reasoning traces only as explanations, we study their **embedding geometry, semantic structure, disagreement patterns, and aggregated representations** as predictive signals for claim veracity.
 
-Instead of relying only on retrieved evidence, we investigate the semantic structure of reasoning traces through embedding analysis, supervised learning, ablation experiments, and clustering analysis.
+Using claims from the **CLEF CheckThat! 2025 and 2026** datasets, we construct a large-scale corpus of reasoning traces and dense semantic embeddings. We then evaluate these representations using supervised classifiers, feature ablations, embedding-space analysis, and clustering experiments.
+
+The central research question is:
+
+> **Do reasoning traces contain veracity-relevant information that is not captured by the original numerical claim alone?**
 
 ---
 
-# Research Highlights
+# Research Contributions
 
-## Novel Contributions
+This work makes the following contributions:
 
-- Uses **multiple reasoning traces** instead of a single explanation.
-- Large-scale reasoning trace embedding corpus.
-- Semantic overlap analysis between CLEF CheckThat! 2025 and 2026.
-- Embedding-space geometric analysis using SVD and centroid distances.
-- Comparison of MLP and XGBoost classifiers.
-- Extensive feature ablation experiments.
-- Investigation of verdict representation strategies.
-- Foundation for future **reasoning trace ranking** research.
+### 1. Reasoning-Trace-Based Numerical Verification
+
+We investigate a formulation of numerical fact verification in which **multiple independent LLM reasoning traces** are treated as representations of a claim rather than relying on a single generated explanation.
+
+### 2. Large-Scale Reasoning Trace Corpus
+
+We construct a large embedding corpus containing:
+
+* **134,554** dense semantic embeddings
+* **128,085** reasoning-trace embeddings
+* **6,469** semantically matched claims across CLEF CheckThat! 2025 & 2026
+* Multiple reasoning traces generated for each claim
+
+### 3. Representation Learning and Feature Engineering
+
+We study several representations of reasoning traces, including:
+
+* Individual trace embeddings
+* Aggregated trace representations
+* Claim–trace relationships
+* Attention-based aggregation
+* Trace disagreement features
+* Verdict representations
+
+### 4. Embedding-Space Analysis
+
+We analyze the geometry of the resulting representation space using:
+
+* SVD-based dimensional analysis
+* Centroid distances
+* Pairwise similarity
+* Clustering
+* Class separation analysis
+
+This allows us to study **how veracity information is distributed in reasoning-trace embedding space**, rather than evaluating classifiers alone.
+
+### 5. Systematic Ablation Studies
+
+We evaluate the contribution of individual feature groups and representation choices through controlled ablation experiments.
+
+### 6. Foundation for Reasoning-Trace Ranking
+
+The results motivate a future formulation in which reasoning traces are **ranked according to their usefulness for numerical verification**, rather than treating every generated trace equally.
+
+---
+
+# Why Numerical Fact Verification?
+
+Consider a claim such as:
+
+> *"Country X's exports increased by 37% between 2019 and 2022."*
+
+A conventional semantic similarity system may retrieve highly relevant evidence containing the same entities, concepts, and terminology while failing to determine whether:
+
+* the reported percentage is correct,
+* the relevant time period is correct,
+* the comparison is calculated correctly,
+* the evidence actually supports the numerical statement.
+
+This creates a gap between **semantic plausibility** and **numerical correctness**.
+
+Our work investigates whether the reasoning process generated by LLMs contains additional signals that can help bridge this gap.
+
+---
+
+# Core Research Hypothesis
+
+We investigate the hypothesis that:
+
+> **Multiple reasoning traces generated for the same numerical claim contain complementary semantic and structural information about claim veracity, and that this information can be learned from their representations.**
+
+Rather than asking only:
+
+**"What does the claim say?"**
+
+we investigate:
+
+**"What does the model's reasoning about the claim look like, and can that structure predict whether the claim is correct?"**
 
 ---
 
 # Pipeline Architecture
 
+View Better Version of Pipeline: https://mermaid.ai/d/fc991fff-3373-43a7-990e-aa8f9b72ad2e
+
+
 ```text
-                            Numerical Claim
-                                   │
-                                   ▼
-                  Multiple LLM Reasoning Traces
-                    (15–20 traces per claim)
-                                   │
-                                   ▼
-                     Dense Semantic Embeddings
-                       (bge-large-en-v1.5)
-                                   │
-                                   ▼
-          ┌──────────────────────────────────────────────┐
-          │           Feature Engineering                │
-          │----------------------------------------------│
-          │ • Claim Embeddings                           │
-          │ • Reasoning Trace Embeddings                 │
-          │ • Attention Features                         │
-          │ • Disagreement Features                      │
-          │ • Verdict Representations                    │
-          └──────────────────────────────────────────────┘
-                                   │
-                                   ▼
-                   Supervised Learning Models
-                 ┌────────────────────────────┐
-                 │      MLP                   │
-                 │      XGBoost               │
-                 └────────────────────────────┘
-                                   │
-                                   ▼
-               True / False / Conflicting Verdict
+                              Numerical Claim
+                                    │
+                                    ▼
+                     ┌─────────────────────────┐
+                     │ Multiple LLM Reasoning  │
+                     │        Traces            │
+                     │      15–20 / claim*      │
+                     └────────────┬────────────┘
+                                  │
+                                  ▼
+                    Dense Semantic Embeddings
+                    ┌──────────────────────────┐
+                    │ bge-large-en-v1.5       │
+                    │ Qwen3-Embedding-8B       │
+                    │ F2LLM-v2-4B              │
+                    └────────────┬─────────────┘
+                                 │
+                                 ▼
+                   ┌──────────────────────────────┐
+                   │     Representation Layer    │
+                   │                              │
+                   │ • Claim representations     │
+                   │ • Trace representations     │
+                   │ • Attention aggregation      │
+                   │ • Disagreement features      │
+                   │ • Verdict representations    │
+                   └──────────────┬───────────────┘
+                                  │
+                                  ▼
+                    ┌──────────────────────────┐
+                    │   Supervised Learning    │
+                    │                          │
+                    │        MLP               │
+                    │        XGBoost           │
+                    └────────────┬─────────────┘
+                                 │
+                                 ▼
+                     Numerical Veracity
+              ┌──────────────┬──────────────┐
+              │              │              │
+             True           False      Conflicting
 ```
+
+*The exact number of traces varies across the experimental setup.
 
 ---
 
 # Dataset
 
-| Metric | Value |
-|---------|------:|
-| Total Claims | 10,558 |
-| Common Claims | 6,469 |
-| Reasoning Traces | 15–20 per claim |
-| Trace Embeddings | 128,085 |
-| Total Embeddings | 134,554 |
-| Classes | True / False / Conflicting |
+The experiments use numerical claims from the **CLEF CheckThat! 2025 and 2026** datasets.
+
+| Metric                      |                          Value |
+| --------------------------- | -----------------------------: |
+| Total claims                |                     **10,558** |
+| Semantically matched claims |                      **6,469** |
+| Reasoning-trace embeddings  |                    **128,085** |
+| Total dense embeddings      |                    **134,554** |
+| Embedding dimensionality    |                       **1024** |
+| Verification classes        | **True / False / Conflicting** |
+
+The matched subset allows us to investigate whether reasoning representations exhibit consistent structure across related datasets and evaluation settings.
 
 ---
 
-# Methodology
+# Experimental Methodology
 
-1. Semantic overlap analysis
-2. Embedding generation
-3. Embedding-space analysis
-4. Supervised classification
-5. Ablation study
-6. Unsupervised clustering
+The study is organized into five main experimental components.
+
+## 1. Semantic Overlap Analysis
+
+We first identify semantically related claims across the CLEF CheckThat! 2025 and 2026 datasets.
+
+This provides a basis for studying whether similar numerical claims produce similar reasoning representations across datasets.
+
+---
+
+## 2. Reasoning Trace Embedding
+
+Multiple LLM-generated reasoning traces are transformed into dense vector representations.
+
+The primary embedding representation uses:
+
+**BGE-large-en-v1.5**
+
+Additional embedding models are evaluated to study the robustness of the representation:
+
+* Qwen3-Embedding-8B
+* F2LLM-v2-4B
+
+The resulting vectors provide a common space for analyzing relationships between claims, reasoning traces, and veracity labels.
+
+---
+
+## 3. Embedding Geometry
+
+We investigate whether veracity classes naturally occupy distinguishable regions of the embedding space.
+
+Analysis includes:
+
+* Singular Value Decomposition (SVD)
+* Centroid analysis
+* Inter-class and intra-class distances
+* Pairwise similarity
+* Cluster structure
+* Dimensionality analysis
+
+This provides a representation-level view of the verification problem.
+
+---
+
+## 4. Supervised Classification
+
+We evaluate whether reasoning-trace representations contain sufficient information for downstream veracity prediction.
+
+The primary classifiers are:
+
+| Model       | Role                                                 |
+| ----------- | ---------------------------------------------------- |
+| **MLP**     | Non-linear representation classifier                 |
+| **XGBoost** | Tree-based classifier for engineered representations |
+
+These models allow us to compare how different representations and feature combinations affect numerical fact verification.
+
+---
+
+## 5. Ablation Studies
+
+We systematically remove feature groups to determine which signals contribute to verification performance.
+
+Investigated components include:
+
+* Claim-only representations
+* Reasoning-trace representations
+* Attention features
+* Disagreement features
+* Verdict representations
+* Aggregated representations
+
+The objective is not simply to maximize predictive performance, but to understand **which properties of reasoning traces are actually useful for verification**.
 
 ---
 
 # Models
 
-| Category | Models |
-|----------|--------|
-| Embeddings | bge-large-en-v1.5, Qwen3-Embedding-8B, F2LLM-v2-4B |
-| Classifiers | MLP, XGBoost |
+| Component             | Models                             |
+| --------------------- | ---------------------------------- |
+| Embedding models      | BGE-large-en-v1.5                  |
+| Additional embeddings | Qwen3-Embedding-8B, F2LLM-v2-4B    |
+| Classifiers           | MLP, XGBoost                       |
+| Analysis              | SVD, clustering, centroid analysis |
+
+---
+
+# Key Findings
+
+Our experiments suggest several important observations.
+
+### Reasoning traces contain useful information beyond the claim
+
+The semantic representation of an LLM's reasoning process provides signals that are not fully captured by the original numerical claim representation.
+
+### Raw embedding space is not sufficient
+
+Veracity classes do not cleanly separate using raw embeddings alone. This motivates **feature engineering and learned aggregation** rather than relying directly on embedding similarity.
+
+### Aggregation matters
+
+How multiple reasoning traces are combined has a significant effect on downstream verification performance. Attention-based aggregation provides a mechanism for assigning different importance to individual traces.
+
+### XGBoost is a strong baseline
+
+XGBoost performs competitively on engineered reasoning-trace representations, suggesting that useful verification signals can exist in relatively structured feature spaces without requiring an end-to-end neural architecture.
+
+### Verdict representation matters
+
+The representation of generated verdict information substantially affects downstream classification, highlighting the importance of how categorical reasoning outcomes are encoded.
+
+### Geometry reveals additional structure
+
+Embedding-space analysis provides evidence that reasoning traces exhibit non-trivial structure with respect to claim veracity, motivating further investigation into **trace-level selection and ranking**.
+
+---
+
+# Research Direction: Learning to Rank Reasoning Traces
+
+A central direction emerging from this work is to move from:
+
+```text
+Generate many reasoning traces
+            ↓
+Treat all traces equally
+            ↓
+Aggregate
+            ↓
+Predict veracity
+```
+
+toward:
+
+```text
+Generate multiple reasoning traces
+            ↓
+Estimate trace usefulness
+            ↓
+Rank / select reasoning traces
+            ↓
+Aggregate high-value traces
+            ↓
+Predict veracity
+```
+
+This reframes reasoning traces as **information sources with different evidential value**.
+
+A future model could learn to identify traces that are:
+
+* more internally consistent,
+* more numerically grounded,
+* better aligned with evidence,
+* less susceptible to arithmetic errors,
+* more discriminative between competing verdicts.
+
+---
+
+# Future Work
+
+### Learning-to-Rank Reasoning Traces
+
+Learn a ranking function that assigns each reasoning trace a verification utility score.
+
+### Cross-Encoder Reranking
+
+Use claim–trace cross-encoders to model fine-grained interactions that may be lost in independent embeddings.
+
+### Transformer-Based Trace Aggregation
+
+Replace fixed aggregation strategies with learned transformer architectures operating over sets of reasoning traces.
+
+### Retrieval-Augmented Reasoning
+
+Incorporate external evidence retrieval into reasoning-trace generation and verification.
+
+### Graph-Based Reasoning Representations
+
+Model relationships between claims, evidence, reasoning traces, and verdicts using graph neural networks.
+
+### End-to-End Differentiable Verification
+
+Develop an end-to-end architecture jointly learning trace selection, aggregation, and numerical veracity prediction.
 
 ---
 
@@ -119,41 +372,80 @@ Instead of relying only on retrieved evidence, we investigate the semantic struc
 Automatic-Numerical-Fact-Verification/
 │
 ├── data/
+│   └── datasets and processed representations
+│
 ├── notebooks/
+│   ├── semantic_overlap/
+│   ├── embeddings/
+│   ├── geometry/
+│   ├── classification/
+│   ├── ablations/
+│   └── clustering/
+│
 ├── models/
+│   ├── mlp/
+│   └── xgboost/
+│
 ├── results/
+│   ├── metrics/
+│   ├── ablations/
+│   └── analysis/
+│
 ├── figures/
+│   ├── embedding_space/
+│   ├── clustering/
+│   └── experiments/
+│
 ├── utils/
+│
 ├── requirements.txt
 └── README.md
 ```
 
 ---
 
+# Reproducibility
 
-# Key Findings
+The repository is structured around independently reproducible experimental stages:
 
-- Raw embeddings alone do not separate veracity classes well.
-- XGBoost consistently performs competitively on reasoning-trace representations.
-- Attention mechanisms improve reasoning aggregation.
-- Verdict representations significantly influence downstream performance.
-- Reasoning traces capture useful semantic information beyond the original claim.
+```text
+Dataset
+   ↓
+Claim Matching
+   ↓
+Reasoning Trace Generation
+   ↓
+Embedding Generation
+   ↓
+Feature Construction
+   ↓
+Model Training
+   ↓
+Evaluation
+   ↓
+Ablation / Geometry / Clustering Analysis
+```
 
----
-
-# Future Work
-
-- Learning-to-Rank reasoning traces
-- Cross-encoder reranking
-- Transformer aggregation
-- Graph Neural Networks
-- Retrieval-Augmented Reasoning
-- End-to-End differentiable ranking
+Each stage can be evaluated independently, enabling controlled comparison of representation choices and downstream models.
 
 ---
 
 # Acknowledgements
 
-- CLEF CheckThat! Lab
-- QuanTemp Benchmark
-- Dhirubhai Ambani University
+This work builds upon resources and benchmarks from:
+
+* **CLEF CheckThat! Lab**
+* **QuanTemp Benchmark**
+* **Dhirubhai Ambani University**
+
+---
+
+# Research Summary
+
+This project explores a broader question about the role of reasoning in reliable LLM systems:
+
+> **Can the structure of model-generated reasoning itself be used as a signal for detecting when a numerical claim is correct?**
+
+Rather than treating chain-of-thought as merely an explanation, we study reasoning traces as **learnable representations**.
+
+The long-term goal is to develop verification systems that can distinguish between answers that are merely **linguistically plausible** and answers that are **quantitatively and logically well-supported**.
