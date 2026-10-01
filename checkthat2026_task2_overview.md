@@ -159,9 +159,6 @@ lift Macro-F1 as well.
 
 ## 4. Supporting Analysis
 
-- **Clustering study**: F2LLM-4B vs Qwen3-Embedding-8B across SVD dimensionalities.
-- **t-SNE visualizations**: trace rank encoded as marker shape, verdict as color — used to check
-  whether high-ranked traces separate by verdict in embedding space.
 - **Error analysis framework** built to categorize failure modes by claim type and disagreement level.
 
 ---
