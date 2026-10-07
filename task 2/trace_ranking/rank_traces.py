@@ -66,7 +66,7 @@ K = 5
 LANGS = {
     "EN": dict(
         train="English/train.json", val="English/validation.json", test="English/test.json",
-        emb="{split}_trace_emb_en.npz",
+        emb=("{split}_qwen3emb8b_en_v1.npz", "{split}_trace_emb_en.npz"),
     ),
     "AR": dict(
         train="Arabic/clef2026_gpt4_o_mini_train_arabic.json",
@@ -177,7 +177,7 @@ def read_npz(path, d):
     """Streams one claim at a time and keeps only the claim vector + 3 group centroids per claim,
     so RAM stays small even for 8B float32 embeddings."""
     z = np.load(path)
-    claims, cents, coh, rep, ccos, has_traces, missing = [], [], [], [], [], False, 0
+    claims, cents, coh, rep, ccos, has_traces, missing, mism = [], [], [], [], [], False, 0, 0
     for i, e in enumerate(d.items):
         n_tr = len(d.verdicts[i])
         k = npz_key(z, d, i)
@@ -192,7 +192,9 @@ def read_npz(path, d):
         a = z[k].astype(np.float32)
         a /= np.linalg.norm(a, axis=1, keepdims=True) + 1e-9
         claims.append(a[0])
-        keep = [j for j, t in enumerate(e["Reasoning_traces"]) if str(t).strip()][: len(a) - 1]
+        keep = [j for j, t in enumerate(e["Reasoning_traces"]) if str(t).strip()]
+        mism += len(keep) != len(a) - 1
+        keep = keep[: len(a) - 1]
         tr = a[1 : 1 + len(keep)]
         has_traces |= len(keep) > 0
         r, c = np.full(n_tr, -1.0), np.full(n_tr, -1.0)
@@ -222,6 +224,8 @@ def read_npz(path, d):
     d.cents, d.coh, d.has_traces = cents, np.array(coh), has_traces
     if missing:
         print(f"    WARNING: {missing}/{len(d.items)} claims missing from {os.path.basename(path)}")
+    if mism:
+        print(f"    WARNING: {mism}/{len(d.items)} claims have a trace-row count different from the JSON")
 
 
 def finish_embedding_features(splits, dim):
@@ -401,7 +405,8 @@ def run_lang(lang, args):
     emb_dir = dict(e.split("=", 1) for e in args.emb).get(lang)
     use_emb = use_group = False
     if emb_dir and not args.no_emb:
-        npz = {s: resolve(emb_dir, spec["emb"].format(split=s)) for s in S}
+        pats = spec["emb"] if isinstance(spec["emb"], tuple) else (spec["emb"],)
+        npz = {s: next((p for p in (resolve(emb_dir, q.format(split=s)) for q in pats) if p), None) for s in S}
         if all(npz.values()):
             for s in S:
                 print(f"  reading {npz[s]}", flush=True)
