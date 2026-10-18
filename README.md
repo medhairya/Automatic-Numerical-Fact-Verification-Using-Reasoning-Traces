@@ -407,4 +407,115 @@ Official score = mean of macro-F1 and Recall@5. Organisers' baselines: **0.4175*
 
 - Designed and implemented the **end-to-end embedding-only pipeline**: data loading, embedding, feature construction, training and evaluation
 - Built the **134,554-embedding corpus** and ran **cross-year semantic claim matching** (6,469 matched claims across CheckThat! 2025 and 2026)
-- Ran the **embedding-geometry study** (SVD, centroids,
+- Ran the **embedding-geometry study** (SVD, centroids, intra/inter-class distances, clustering) and the **MLP / XGBoost** baselines with feature ablations
+- Compared **three embedding models** (BGE-large-en-v1.5, Qwen3-Embedding-8B, F2LLM-v2-4B)
+- Built the **trace-aggregation verifier**: masked attention pooling, the disagreement vector, 7 verdict statistics, and four verdict-encoding strategies (Raw / Dup / AE / Proj)
+- Derived the **optimal group-level ranking rule** ($p_v / n_v$) and implemented the **CV-gated logistic-regression ranker** with kNN-label, PCA and trace-group feature blocks
+- **Found the Arabic train/test leakage** and designed the deduplicated evaluation protocol
+- Ran the full **ablation grid** (3 settings × 4 encodings × 3 feature sets × 2 trace budgets)
+
+**Skills:** Representation learning · PyTorch · scikit-learn · XGBoost · Multilingual NLP · Text embeddings · Learning-to-rank · Experimental design and ablations · Data-leakage auditing · Embedding-space analysis
+
+---
+
+## Research directions
+
+### From "treat all traces equally" to "rank traces by value"
+
+```text
+Current practice                         Direction explored here
+─────────────────                        ───────────────────────
+Generate many reasoning traces           Generate multiple reasoning traces
+        ↓                                         ↓
+Treat all traces equally                 Estimate trace usefulness
+        ↓                                         ↓
+Aggregate                                Rank / select reasoning traces
+        ↓                                         ↓
+Predict veracity                         Aggregate high-value traces
+                                                  ↓
+                                         Predict veracity
+```
+
+This treats reasoning traces as **information sources with different evidential value**. A future model could learn to prefer traces that are:
+
+- more internally consistent,
+- more numerically grounded,
+- better aligned with evidence,
+- less prone to arithmetic errors,
+- more discriminative between competing verdicts.
+
+### Future work
+
+- **Optimal trace budget.** How many traces are actually needed, and which ones contribute most to reliable verdicts?
+- **Learning-to-rank reasoning traces.** Assign each trace a verification-utility score beyond verdict groups.
+- **Cross-encoder reranking.** Model fine-grained claim–trace interactions that independent embeddings miss.
+- **Transformer-based trace aggregation.** Replace fixed pooling with learned set/transformer architectures.
+- **Retrieval-augmented reasoning.** Bring external evidence retrieval into trace generation and verification.
+- **Graph-based reasoning representations.** Model claims, evidence, traces and verdicts as a graph with GNNs.
+- **End-to-end differentiable verification.** Jointly learn trace selection, aggregation and veracity prediction.
+- **More languages**, such as the Spanish track.
+
+---
+
+## Repository structure
+
+```text
+Automatic-Numerical-Fact-Verification-Using-Reasoning-Traces/
+│
+├── my_scripts/                       # Pipeline: embedding, features, verifier, ranker, analysis
+├── results/                          # Metrics, ablation outputs, analysis
+├── task 2/given code/                # Official CheckThat! 2026 Task 2 starter code (organisers)
+├── checkthat2026_task2_overview.md   # Task description
+└── README.md
+```
+
+---
+
+## Reproducibility
+
+Each stage can be run and evaluated independently, so representation choices and models can be compared under control.
+
+```text
+Dataset
+   ↓
+Claim matching (2025 ↔ 2026)
+   ↓
+Reasoning traces (15–20 per claim)
+   ↓
+Embedding generation (BGE / Qwen3 / F2LLM)
+   ↓
+Feature construction (attention · disagreement · verdict stats)
+   ↓
+Model training (MLP · XGBoost · Logistic regression ranker)
+   ↓
+Evaluation (macro-F1 · Recall@5 · original + deduplicated)
+   ↓
+Ablation / geometry / clustering analysis
+```
+
+```bash
+git clone https://github.com/medhairya/Automatic-Numerical-Fact-Verification-Using-Reasoning-Traces.git
+cd Automatic-Numerical-Fact-Verification-Using-Reasoning-Traces
+pip install -r requirements.txt
+
+# Replace with the actual script names in my_scripts/
+python my_scripts/<embed>.py
+python my_scripts/<train_verifier>.py --lang en
+python my_scripts/<rank_and_evaluate>.py --lang ar --dedup
+```
+
+The CLEF CheckThat! 2026 Task 2 data is distributed by the lab organisers. See `checkthat2026_task2_overview.md`.
+
+---
+
+## Acknowledgements
+
+- **CLEF CheckThat! Lab** (Task 2: Fact-Checking Numerical Claims)
+- **QuanTemp** benchmark
+- **Dhirubhai Ambani University**
+
+---
+
+<p align="center">
+  <i>The long-term goal: verification systems that tell apart answers that are merely <b>linguistically plausible</b> from answers that are <b>quantitatively and logically well-supported</b>.</i>
+</p>
