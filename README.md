@@ -1,14 +1,49 @@
-# Automatic Numerical Fact Verification using Reasoning Traces
+<h1 align="center">Automatic Numerical Fact Verification<br/>using Reasoning Traces</h1>
 
 <p align="center">
-  <b>Verifying numerical claims and ranking LLM reasoning traces with embeddings, with no extra LLM calls</b>
-</p>
-
-<p align="center">
+  <strong>Verifying numerical claims and ranking LLM reasoning traces with embeddings, with no extra LLM calls.</strong><br />
   <i>Once an LLM has written its reasoning, do you need to call an LLM again to judge it?</i>
 </p>
 
----
+<div align="center">
+
+[![Python][badge-python]](#reproducibility)
+[![PyTorch][badge-pytorch]](#component-1-trace-aggregation-verifier)
+[![scikit-learn][badge-sklearn]](#component-2-group-level-trace-ranker)
+[![XGBoost][badge-xgboost]](#4-supervised-classification)
+[![Qwen3-Embedding-8B][badge-qwen]](#architecture)
+[![CLEF CheckThat! 2026][badge-clef]](#dataset-clef-checkthat-2026-task-2)
+
+</div>
+
+<p align="center">
+  <a href="#tldr">Overview</a> ·
+  <a href="#phase-1-exploring-reasoning-trace-representations">Exploration</a> ·
+  <a href="#phase-2-the-final-embedding-only-system">Method</a> ·
+  <a href="#results">Results</a> ·
+  <a href="#ablations-macro-f1-on-the-test-set">Ablations</a> ·
+  <a href="#my-contributions">My contributions</a> ·
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Arabic_macro--F1-0.977-2EA44F" alt="Arabic macro-F1 0.977" />
+  <img src="https://img.shields.io/badge/Arabic_(dedup)-0.954-2EA44F" alt="Arabic deduplicated macro-F1 0.954" />
+  <img src="https://img.shields.io/badge/English_score-0.4249-0078D6" alt="English official score 0.4249" />
+  <img src="https://img.shields.io/badge/LLM_calls_at_inference-0-orange" alt="Zero LLM calls at inference" />
+  <a href="https://github.com/medhairya/Automatic-Numerical-Fact-Verification-Using-Reasoning-Traces/commits/main"><img src="https://img.shields.io/github/last-commit/medhairya/Automatic-Numerical-Fact-Verification-Using-Reasoning-Traces" alt="Last commit" /></a>
+  <a href="https://github.com/medhairya/Automatic-Numerical-Fact-Verification-Using-Reasoning-Traces/stargazers"><img src="https://img.shields.io/github/stars/medhairya/Automatic-Numerical-Fact-Verification-Using-Reasoning-Traces?style=flat" alt="Stars" /></a>
+</p>
+
+![Embedding-only pipeline: a trace-aggregation verifier and a group-level trace ranker sharing one set of Qwen3-Embedding-8B embeddings](assets/pipeline.png)
+
+*The embedding-only pipeline. Claims and traces are embedded once with Qwen3-Embedding-8B. A trace-aggregation verifier (attention pooling, disagreement and verdict statistics into an MLP) predicts the verdict, and a group-level ranker picks the top-5 traces. No LLM is called at any stage.*
+
+[badge-python]: https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white
+[badge-pytorch]: https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white
+[badge-sklearn]: https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikitlearn&logoColor=white
+[badge-xgboost]: https://img.shields.io/badge/XGBoost-189FDD?style=for-the-badge
+[badge-qwen]: https://img.shields.io/badge/Qwen3--Embedding--8B-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black
+[badge-clef]: https://img.shields.io/badge/CLEF_CheckThat!-2026-6A5ACD?style=for-the-badge
 
 ## TL;DR
 
