@@ -14,11 +14,18 @@ Classifier family (version-2 classifier refitted for every K on the first K trac
   hybrid t       stop with the Beta rule on the votes, but output the classifier verdict at that K
   oracle         first K after which the classifier verdict never changes
 Outputs: results/adaptive_stopping_all_languages.csv and .png
-Usage: python adaptive_stopping_all_languages.py [english] [arabic] [spanish]
+With --pn the traces are read in p/n ranked order instead (same p/n rule as shift_aware_v2_arabic_spanish.py: out-of-fold
+vote-count model on this setting's train, verdict groups by p(class) / group size, dataset order inside a group; the
+classifier for every K is refitted on the top K p/n traces). Outputs: results/adaptive_stopping_pn_order.csv and .png
+Note: the p/n order needs all 20 verdicts to be computed, so in this mode no LLM calls are actually saved.
+Usage: python adaptive_stopping_all_languages.py [--pn] [english] [arabic] [spanish]
 """
 import json, os, sys, time, warnings, numpy as np, pandas as pd, matplotlib
 from scipy.special import betainc
 from sklearn.decomposition import PCA
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import StratifiedKFold
+from sklearn.preprocessing import StandardScaler
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from shift_aware_v2_arabic_spanish import VERD, VL, vote_feats, autoencode, fit_lr, f1s
 matplotlib.use("Agg")
@@ -33,7 +40,8 @@ CFG = {"english": {"dir": "English", "emb": "qwen3 english embeddings", "npz": "
                    "files": ["spanish_train.json", "spanish_val.json", "clef_spanish_test_final_with_gold_labels.json"]}}
 T = 20; DIM = 128; PCA_FIT = 512; B = 2000
 BETA_T = [0.8, 0.9, 0.95, 0.99]; LEAD_M = [2, 3, 4, 5]; TAU_Q = [0.2, 0.4, 0.6, 0.8, 0.9]
-OUT = os.path.join(P, "results", "adaptive_stopping_all_languages")
+PN = "--pn" in sys.argv
+OUT = os.path.join(P, "results", "adaptive_stopping_pn_order" if PN else "adaptive_stopping_all_languages")
 def log(*a): print(*a, flush=True)
 
 def load(lang):
@@ -64,9 +72,32 @@ def load(lang):
         keep["dedup"] = {"train": np.array(kt), "val": np.array(kv), "test": keep["original"]["test"]}
     return RAW, keep
 
-def classifier_by_K(RAW, keep):
-    """Version-2 classifier refitted on the first K traces, K = 1..T. Returns test labels, classes, test/val probabilities per K."""
+def pn_orders(RAW, keep):
+    """p/n reading order per split (kept rows), -1 = no trace. Vote-count model fitted on train only (out-of-fold for train)."""
+    D = {s: {"verd": RAW[s]["verd"][keep[s]], "valid": RAW[s]["order"][keep[s]] >= 0, "label": [RAW[s]["label"][i] for i in keep[s]]} for s in RAW}
+    classes = [c for c in VERD if c in set(D["train"]["label"])]; CL = {c: i for i, c in enumerate(classes)}; cls_v = [VL[c] for c in classes]
+    ytr = np.array([CL[l] for l in D["train"]["label"]])
+    VF = {s: vote_feats(D[s]["verd"]) for s in D}; sc = StandardScaler().fit(VF["train"])
+    mk = lambda: LogisticRegression(C=1.0, max_iter=3000, class_weight="balanced"); Pn = {"train": np.zeros((len(ytr), len(classes)))}
+    for a, b in StratifiedKFold(5, shuffle=True, random_state=0).split(VF["train"], ytr):
+        Pn["train"][b] = mk().fit(sc.transform(VF["train"][a]), ytr[a]).predict_proba(sc.transform(VF["train"][b]))
+    m = mk().fit(sc.transform(VF["train"]), ytr)
+    for s in ["val", "test"]: Pn[s] = m.predict_proba(sc.transform(VF[s]))
+    out = {}
+    for s in D:
+        v, ok = D[s]["verd"], D[s]["valid"]; o = np.full_like(v, -1)
+        for r in range(len(v)):
+            n = {c: max((v[r][ok[r]] == c).sum(), 1) for c in range(3)}
+            prio = np.array([Pn[s][r, cls_v.index(x)] / n[x] if x in cls_v else -1.0 for x in v[r]]); prio[~ok[r]] = -np.inf
+            k = int(ok[r].sum()); o[r, :k] = np.argsort(-prio, kind="stable")[:k]
+        out[s] = o
+    return out
+
+def classifier_by_K(RAW, keep, orders=None):
+    """Version-2 classifier refitted on the first K traces (in `orders` if given), K = 1..T. Returns test labels, classes, test/val probabilities per K."""
     D = {s: {k: (v[keep[s]] if isinstance(v, np.ndarray) else [v[i] for i in keep[s]]) for k, v in RAW[s].items()} for s in RAW}
+    if orders is not None:
+        for s in D: D[s]["order"] = orders[s]
     classes = [c for c in VERD if c in set(D["train"]["label"])]; nc = len(classes); CL = {c: i for i, c in enumerate(classes)}
     y = {s: np.array([CL[l] for l in D[s]["label"]]) for s in D}
     tmean = np.stack([D["train"]["traces"][i, :max(int((D["train"]["order"][i] >= 0).sum()), 1)].astype(np.float32).mean(0) for i in range(len(y["train"]))])
@@ -106,9 +137,11 @@ def run(lang, rows):
     RAW, keep = load(lang); rng = np.random.default_rng(0)
     for setting in keep:
         log(f"\n===== {lang} / {setting}")
-        y, classes, PT, PV, n_train = classifier_by_K(RAW, keep[setting]); nc = len(classes); cls_v = [VL[c] for c in classes]
+        orders = pn_orders(RAW, keep[setting]) if PN else None
+        y, classes, PT, PV, n_train = classifier_by_K(RAW, keep[setting], orders); nc = len(classes); cls_v = [VL[c] for c in classes]
         idx = rng.integers(0, len(y), (B, len(y))); V = RAW["test"]["verd"][keep[setting]["test"]]; N = len(y); rws = np.arange(N)
         assert (RAW["test"]["order"] >= 0).all(), "every test claim is expected to have 20 traces"
+        if PN: V = np.take_along_axis(V, orders["test"], 1)                        # votes arrive in p/n order
         # ---- vote family ----
         cnt = np.cumsum(V[:, :, None] == np.array(cls_v)[None, None, :], 1)      # (N,T,nc) votes for the label classes
         lead = cnt.argmax(2); srt = np.sort(cnt, 2); a, b = srt[:, :, -1], srt[:, :, -2]; vote20 = lead[:, -1]
@@ -160,13 +193,13 @@ def plot(R):
     for ax in axes[len(panels):]: ax.axis("off")
     h, lb = axes[0].get_legend_handles_labels(); axes[-1].legend(h, lb, frameon=False, fontsize=10, labelcolor=INK2, loc="center left")
     fig.suptitle("Adaptive stopping: Macro-F1 against the average number of traces read (test)", x=0.01, ha="left", fontsize=13, fontweight="bold", color=INK)
-    fig.text(0.01, 0.01, "Traces read in dataset order. Vote rules need no training, so they are identical for original and deduplicated data. "
+    fig.text(0.01, 0.01, ("Traces read in p/n ranked order." if PN else "Traces read in dataset order.") + " Vote rules need no training, so they are identical for original and deduplicated data. "
              "Classifier v2 is refitted for every K on the first K traces.", fontsize=8.5, color=MUTED)
     fig.tight_layout(rect=(0, 0.025, 1, 0.95), h_pad=2.5, w_pad=2.5); fig.savefig(OUT + ".png", dpi=150, facecolor=SURF); log(OUT + ".png")
 
 if __name__ == "__main__":
     rows = []
-    for lang in (sys.argv[1:] or ["english", "arabic", "spanish"]): run(lang, rows)
+    for lang in ([a for a in sys.argv[1:] if a != "--pn"] or ["english", "arabic", "spanish"]): run(lang, rows)
     R = pd.DataFrame(rows); R.to_csv(OUT + ".csv", index=False); plot(R)
     pd.set_option("display.width", 250); pd.set_option("display.max_rows", 500)
     keep = (R.method != "fixed K") | R.param.isin([1, 3, 5, 10, 20])
